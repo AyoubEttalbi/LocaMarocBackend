@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('startDate');
             $table->date('endDate');
             $table->float('totalPrice');
-            $table->string('status');
+            $table->string('status', 20);
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('statusUpdatedBy')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('vehicle_id')->constrained('cars')->onDelete('cascade');

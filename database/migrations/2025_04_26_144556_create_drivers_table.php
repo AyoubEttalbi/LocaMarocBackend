@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('drivers', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('licenseNumber')->unique();
+            $table->string('name', 100);
+            $table->string('licenseNumber', 50)->unique();
             $table->integer('experience');
             $table->float('salary');
             $table->boolean('availability');

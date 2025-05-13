@@ -57,7 +57,7 @@ class CarController extends Controller
             'fuelType' => 'required|string',
             'color' => 'required|string',
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'image' => 'required|url|regex:/https:\/\/res\.cloudinary\.com\/.+/',
+            'image' => 'required',
             'insuranceExpiryDate' => 'required|date',
             'serviceDueDate' => 'required|date',
             'features' => 'nullable|array',
@@ -125,7 +125,7 @@ class CarController extends Controller
             'fuelType' => 'sometimes|required|string',
             'color' => 'sometimes|required|string',
             'year' => 'sometimes|required|integer|min:1900|max:' . (date('Y') + 1),
-            'image' => 'nullable|url|regex:/https:\/\/res\.cloudinary\.com\/.+/',
+            'image' => 'required_if:hasFile,image',
             'insuranceExpiryDate' => 'sometimes|required|date',
             'serviceDueDate' => 'sometimes|required|date',
             'features' => 'nullable|array',
@@ -168,17 +168,35 @@ class CarController extends Controller
      */
     public function destroy($id)
     {
-        $car = Car::findOrFail($id);
-        
-        // Note: We're not deleting images from Cloudinary here
-        // If you want to delete images from Cloudinary, you would use:
-        // $cloudinary = $this->getCloudinary();
-        // $publicId = /* extract public_id from the URL */;
-        // $cloudinary->uploadApi()->destroy($publicId);
-        
-        $car->delete();
-        
-        return response()->json(null, 204);
+        try {
+            $car = Car::findOrFail($id);
+            
+            // Check if there are any reservations for this car
+            $reservationsCount = $car->reservations()->count();
+            if ($reservationsCount > 0) {
+                return response()->json([
+                    'message' => 'Cannot delete this car because it has ' . $reservationsCount . ' reservation(s) associated with it. Please delete the reservations first.'
+                ], 409); // 409 Conflict status code
+            }
+            
+            // Note: We're not deleting images from Cloudinary here
+            // If you want to delete images from Cloudinary, you would use:
+            // $cloudinary = $this->getCloudinary();
+            // $publicId = /* extract public_id from the URL */;
+            // $cloudinary->uploadApi()->destroy($publicId);
+            
+            $car->delete();
+            
+            return response()->json(null, 204);
+        } catch (\Exception $e) {
+            // Log the error
+            \Log::error('Error deleting car: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'An error occurred while deleting the car.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

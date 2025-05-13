@@ -44,11 +44,31 @@ class ImageController extends Controller
         try {
             // Validate the request
             $request->validate([
-                'image' => 'nullable|image|max:5120', // 5MB max
+                'image' => 'required|file|mimes:jpeg,jpg,png,gif|max:5120', // 5MB max
+            ], [
+                'image.required' => 'An image file is required',
+                'image.file' => 'The uploaded file must be a valid image file',
+                'image.mimes' => 'Only JPEG, JPG, PNG, and GIF images are allowed',
+                'image.max' => 'The image must not be larger than 5MB'
             ]);
 
             // Get the image file
             $image = $request->file('image');
+
+            if (!$image) {
+                return response()->json([
+                    'message' => 'No image file provided',
+                    'errors' => ['image' => 'No image file was uploaded']
+                ], 400);
+            }
+
+            // Check file size
+            if ($image->getSize() > 5120 * 1024) { // 5MB in bytes
+                return response()->json([
+                    'message' => 'Image is too large',
+                    'errors' => ['image' => 'The image must not be larger than 5MB']
+                ], 400);
+            }
             
             // Upload to Cloudinary
             $cloudinary = $this->getCloudinary();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
@@ -138,7 +139,7 @@ class ReservationController extends Controller
             'statusUpdatedBy' => $request->user()->id,
             'vehicle_id' => $request->vehicle_id,
             'location_id' => $request->pickup_location,
-            'payment_id' => null
+            'payment_id' => 1
         ]);
 
         $reservation->save();
@@ -306,5 +307,75 @@ class ReservationController extends Controller
         return response()->json([
             'message' => 'Reservation cancelled successfully'
         ]);
+    }
+    /**
+     * Generate and download reservation details as PDF
+     */
+    public function downloadPdf(Request $request, $reservationId)
+    {
+        try {
+            // Get the reservation with relationships
+            $reservation = Reservation::with(['car', 'user'])->find($reservationId);
+            if (!$reservation) {
+                \Log::warning('Attempted to access non-existent reservation', [
+                    'reservation_id' => $reservationId,
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent()
+                ]);
+                
+                return response()->json([
+                    'error' => 'Reservation not found',
+                    'message' => 'The requested reservation does not exist.'
+                ], 404);
+            }
+
+            // Prepare data for PDF
+            $data = [
+                'customerInfo' => [
+                    'fullName' => $reservation->user ? $reservation->user->name : 'N/A',
+                    'email' => $reservation->user ? $reservation->user->email : 'N/A',
+                    'phone' => $reservation->user ? $reservation->user->phone : 'N/A',
+                    'age' => $reservation->user ? $reservation->user->age : 'N/A',
+                    'driverLicense' => $reservation->user ? $reservation->user->driverLicense : 'N/A'
+                ],
+                'car' => [
+                    'brand' => $reservation->car ? $reservation->car->brand : 'N/A',
+                    'model' => $reservation->car ? $reservation->car->model : 'N/A'
+                ],
+                'pickupLocation' => $reservation->pickup_location,
+                'returnLocation' => $reservation->dropoff_location,
+                'pickupDate' => $reservation->startDate,
+                'pickupTime' => $reservation->pickupTime,
+                'returnDate' => $reservation->endDate,
+                'returnTime' => $reservation->returnTime,
+                'driver' => $reservation->selectDriver ? 'with_driver' : 'self',
+                'accessories' => $reservation->accessories ?? [],
+                'insurance' => $reservation->insurance ?? 'None',
+                'totalCost' => $reservation->totalPrice ?? 0
+            ];
+
+            // Generate PDF
+            $pdf = Pdf::loadView('reservation_pdf', ['data' => $data]);
+            
+            // Set appropriate headers for PDF download
+            $headers = [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="reservation-' . $reservationId . '.pdf"',
+            ];
+
+            return response($pdf->output(), 200, $headers);
+
+        } catch (\Exception $e) {
+            \Log::error('PDF Generation Error', [
+                'reservation_id' => $reservationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to generate PDF',
+                'message' => 'An error occurred while generating the PDF. Please try again later.'
+            ], 500);
+        }
     }
 }

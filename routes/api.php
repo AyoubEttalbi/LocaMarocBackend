@@ -23,10 +23,10 @@ use App\Http\Controllers\API\ImageController;
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/upload/image', [ImageController::class, 'upload']);
 Route::get('/drivers', [UserController::class, 'getDrivers']);
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/upload/image', [ImageController::class, 'upload']);
     Route::get('/user', function (Request $request) {
         
         return $request->user();
@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reservations/{id}', [ReservationController::class, 'show']);
     Route::put('/reservations/{id}', [ReservationController::class, 'update']);
     Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
+    Route::get('/reservations/{id}/pdf', [ReservationController::class, 'downloadPdf']);
 });
 
 
@@ -90,11 +91,6 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
     Route::get('/users/search', [UserController::class, 'search']);
     
-    // Accessories management (placeholder)
-    // Route::get('/accessories', [AccessoriesController::class, 'index']);
-    // Route::post('/accessories', [AccessoriesController::class, 'store']);
-    // Route::put('/accessories/{id}', [AccessoriesController::class, 'update']);
-    // Route::delete('/accessories/{id}', [AccessoriesController::class, 'destroy']);
 
     // Reservations management
     Route::get('/reservations', [ReservationController::class, 'index']);
@@ -102,11 +98,6 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::put('/reservations/{id}', [ReservationController::class, 'update']);
     Route::post('/reservations/{id}/assign-driver', [ReservationController::class, 'assignDriver']);
     Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
+    Route::get('/reservations/{id}/pdf', [ReservationController::class, 'downloadPdf']);
 
-    // Reports (placeholder)
-    // Route::get('/reports', [ReportController::class, 'index']);
-
-    // Settings (placeholder)
-    // Route::get('/settings', [SettingsController::class, 'index']);
-    // Route::post('/settings', [SettingsController::class, 'update']);
 });
